@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image to Spreadsheet</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Instrument+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- Handsontable -->
+<link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css">
+<script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
+
+<!-- App styles -->
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<!-- ══ HEADER ════════════════════════════════════════════════════ -->
+<header class="header">
+  <div class="header-brand">
+    <div class="brand-icon">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect x="2"  y="2"  width="11" height="11" rx="2" fill="#F59E0B"/>
+        <rect x="15" y="2"  width="11" height="11" rx="2" fill="#F59E0B" opacity=".5"/>
+        <rect x="2"  y="15" width="11" height="11" rx="2" fill="#F59E0B" opacity=".5"/>
+        <rect x="15" y="15" width="11" height="11" rx="2" fill="#F59E0B"/>
+      </svg>
+    </div>
+    <span class="brand-name">Intelli<em>Tab</em></span>
+    <span class="brand-tag">Smart Image → Spreadsheet</span>
+  </div>
+
+  <div class="header-stats" id="headerStats" style="display:none">
+    <div class="stat-chip" id="statAccuracy">
+      <span class="sc-label">OCR Accuracy</span>
+      <span class="sc-val" id="accuracyVal">—</span>
+    </div>
+    <div class="stat-chip" id="statRows">
+      <span class="sc-label">Rows</span>
+      <span class="sc-val" id="rowsVal">—</span>
+    </div>
+    <div class="stat-chip" id="statCols">
+      <span class="sc-label">Columns</span>
+      <span class="sc-val" id="colsVal">—</span>
+    </div>
+    <div class="stat-chip" id="statNumeric">
+      <span class="sc-label">Numeric Cols</span>
+      <span class="sc-val" id="numericVal">—</span>
+    </div>
+  </div>
+
+  <div class="header-actions">
+    <button class="hdr-btn" id="exportBtn" style="display:none" onclick="downloadExcel()">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <path d="M8 2v8M5 7l3 3 3-3M2 12h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      Download Excel
+    </button>
+    <button class="hdr-btn secondary" id="resetBtn" style="display:none" onclick="resetAll()">New Image</button>
+  </div>
+</header>
+
+<!-- ══ UPLOAD ZONE ════════════════════════════════════════════════ -->
+<div class="upload-screen" id="uploadScreen">
+  <div class="upload-hero">
+    <h1 class="uh-title">Drop a table image.<br>Get a live spreadsheet.</h1>
+    <p class="uh-sub">OCR with confidence heatmap, bidirectional cell↔image mapping,<br>numeric detection, and Excel export.</p>
+
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept="image/*" hidden>
+      <div class="dz-content" id="dzContent">
+        <div class="dz-icon">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+            <rect x="6" y="6" width="36" height="36" rx="4" stroke="currentColor" stroke-width="1.5" stroke-dasharray="5 4"/>
+            <line x1="6" y1="18" x2="42" y2="18" stroke="currentColor" stroke-width="1" opacity=".4"/>
+            <line x1="6" y1="30" x2="42" y2="30" stroke="currentColor" stroke-width="1" opacity=".4"/>
+            <line x1="18" y1="6" x2="18" y2="42" stroke="currentColor" stroke-width="1" opacity=".4"/>
+            <line x1="30" y1="6" x2="30" y2="42" stroke="currentColor" stroke-width="1" opacity=".4"/>
+            <path d="M24 34 L24 14 M18 20 L24 14 L30 20" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+        </div>
+        <p class="dz-title">Drag & drop your table image</p>
+        <p class="dz-sub">or <button class="link-btn" onclick="document.getElementById('fileInput').click()">browse files</button></p>
+        <p class="dz-formats">PNG · JPG · BMP · TIFF · WEBP</p>
+      </div>
+    </div>
+
+    <div class="feature-pills">
+      <span class="fp">🌡 Confidence Heatmap</span>
+      <span class="fp">🔗 Image↔Cell Mapping</span>
+      <span class="fp">🔢 Auto Numeric Detection</span>
+      <span class="fp">📊 Excel Export</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ LOADING ════════════════════════════════════════════════════ -->
+<div class="loading-screen" id="loadingScreen" style="display:none">
+  <div class="ls-card">
+    <div class="ls-spinner">
+      <div class="lss-ring"></div>
+      <div class="lss-inner">OCR</div>
+    </div>
+    <p class="ls-title">Extracting table data…</p>
+    <div class="ls-steps">
+      <div class="lss" id="lss1">Preprocessing image</div>
+      <div class="lss" id="lss2">Detecting table structure</div>
+      <div class="lss" id="lss3">Running Tesseract OCR</div>
+      <div class="lss" id="lss4">Building spreadsheet</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAIN WORKSPACE ════════════════════════════════════════════ -->
+<div class="workspace" id="workspace" style="display:none">
+
+  <!-- ── LEFT PANEL: Image viewer ── -->
+  <div class="img-panel" id="imgPanel">
+    <div class="panel-header">
+      <span class="ph-title">Source Image</span>
+      <div class="ph-badges">
+        <span class="badge active" id="mapModeBadge">🔗 Mapping ON</span>
+        <button class="ph-toggle" id="mappingToggle" onclick="toggleMapping()">Disable</button>
+      </div>
+    </div>
+
+    <!-- Image + Canvas overlay -->
+    <div class="img-viewer" id="imgViewer">
+      <img id="sourceImg" src="" alt="Uploaded table">
+      <!-- Canvas is overlaid on top for bounding box drawing -->
+      <canvas id="overlayCanvas"></canvas>
+
+      <!-- Tooltip shown near highlighted cell -->
+      <div class="bbox-tooltip" id="bboxTooltip" style="display:none">
+        <span id="ttText"></span>
+        <span id="ttConf" class="tt-conf"></span>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="conf-legend">
+      <span class="cl-item"><span class="cl-dot green"></span>≥ 90% confident</span>
+      <span class="cl-item"><span class="cl-dot yellow"></span>70–89%</span>
+      <span class="cl-item"><span class="cl-dot red"></span>&lt; 70%</span>
+    </div>
+
+    <!-- ★ NOVEL: Reverse mapping instruction -->
+    <div class="reverse-hint" id="reverseHint">
+      <span class="rh-icon">👆</span>
+      <span>Click any highlighted region on the image to jump to that cell in the spreadsheet</span>
+    </div>
+  </div>
+
+  <!-- ── RIGHT PANEL: Spreadsheet ── -->
+  <div class="sheet-panel" id="sheetPanel">
+    <div class="panel-header">
+      <span class="ph-title">Extracted Spreadsheet</span>
+      <div class="ph-badges">
+        <span class="badge" id="gridModeBadge">Handsontable</span>
+        <span class="badge" id="editableBadge">Fully Editable</span>
+      </div>
+    </div>
+
+    <!-- Novelty alert panels -->
+    <div class="novelty-alerts" id="noveltyAlerts"></div>
+
+    <!-- Handsontable container -->
+    <div id="hotContainer"></div>
+
+    <!-- Sum bar (auto-sum for numeric cols) -->
+    <div class="sum-bar" id="sumBar" style="display:none">
+      <span class="sb-label">Column Totals:</span>
+      <div class="sb-chips" id="sumChips"></div>
+    </div>
+
+    <p class="sheet-hint">
+      ✏ Click to edit &nbsp;·&nbsp; Right-click for row/column options &nbsp;·&nbsp;
+      🔗 Click cell to highlight source region on image &nbsp;·&nbsp;
+      🔴 Red cells have low OCR confidence — review before exporting
+    </p>
+  </div>
+
+</div>
+
+<!-- ══ ERROR TOAST ════════════════════════════════════════════════ -->
+<div class="error-toast" id="errorToast" style="display:none">
+  <span>⚠</span>
+  <span id="errorMsg"></span>
+  <button onclick="hideError()">✕</button>
+</div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>
